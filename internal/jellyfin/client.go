@@ -25,6 +25,14 @@ type JellyfinClient struct {
 func (c *JellyfinClient) BaseURL() string { return c.baseURL }
 func (c *JellyfinClient) APIKey() string  { return c.apiKey }
 
+// authorization returns the Authorization header value for the API key.
+// Jellyfin 12 rejects the legacy X-MediaBrowser-Token / X-Emby-Token headers
+// and the api_key query parameter, so the key is sent in the documented
+// MediaBrowser scheme instead.
+func (c *JellyfinClient) authorization() string {
+	return fmt.Sprintf("MediaBrowser Token=%q", c.apiKey)
+}
+
 // NewJellyfinClient creates a client from environment variables.
 // Exits if JELLYFIN_API_KEY is not set.
 func NewJellyfinClient() *JellyfinClient {
@@ -67,7 +75,7 @@ func (c *JellyfinClient) DoRequest(ctx context.Context, method, endpoint string,
 	if err != nil {
 		return nil, fmt.Errorf("creating request: %w", err)
 	}
-	req.Header.Set("X-MediaBrowser-Token", c.apiKey)
+	req.Header.Set("Authorization", c.authorization())
 	req.Header.Set("Accept", "application/json")
 	if body != nil {
 		req.Header.Set("Content-Type", "application/json")
@@ -141,7 +149,7 @@ func (c *JellyfinClient) PostRaw(ctx context.Context, endpoint string, params ur
 	if err != nil {
 		return fmt.Errorf("creating request: %w", err)
 	}
-	req.Header.Set("X-MediaBrowser-Token", c.apiKey)
+	req.Header.Set("Authorization", c.authorization())
 	req.Header.Set("Content-Type", contentType)
 
 	resp, err := c.httpClient.Do(req)
