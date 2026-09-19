@@ -164,3 +164,23 @@ func TestGetItem_NotFound(t *testing.T) {
 		t.Error("expected IsError to be true")
 	}
 }
+
+// Jellyfin 12 rejects the legacy api_key query parameter; the download URL
+// must use ApiKey instead.
+func TestItemExtras_DownloadURL(t *testing.T) {
+	mc := &mockClient{apiKeyVal: "secret-key", baseURLVal: "http://jf.test:8096"}
+
+	result := callTool(t, mc, "", "jellyfin_item_extras", map[string]any{
+		"action":  "download_url",
+		"item_id": "item-1",
+	})
+
+	text := resultText(t, result)
+	want := "http://jf.test:8096/Items/item-1/Download?ApiKey=secret-key"
+	if !strings.Contains(text, want) {
+		t.Errorf("expected download URL %q, got: %s", want, text)
+	}
+	if strings.Contains(text, "api_key=") {
+		t.Errorf("legacy api_key parameter should not be used, got: %s", text)
+	}
+}
